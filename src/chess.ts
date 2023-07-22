@@ -941,6 +941,62 @@ export class Chess {
     return false
   }
 
+  _attackers(color: Color, square: number) {
+    const attackers=[]
+    for (let i = Ox88.a8; i <= Ox88.h1; i++) {
+      // did we run off the end of the board
+      if (i & 0x88) {
+        i += 7
+        continue
+      }
+
+      // if empty square or wrong color
+      if (this._board[i] === undefined || this._board[i].color !== color) {
+        continue
+      }
+
+      const piece = this._board[i]
+      const difference = i - square
+
+      // skip - to/from square are the same
+      if (difference === 0) {
+        continue
+      }
+
+      const index = difference + 119
+
+      if (ATTACKS[index] & PIECE_MASKS[piece.type]) {
+        if (piece.type === PAWN) {
+          if (difference > 0) {
+            if (piece.color === WHITE) attackers.push(algebraic(i))
+          } else {
+            if (piece.color === BLACK) attackers.push(algebraic(i))
+          }
+          continue
+        }
+
+        // if the piece is a knight or a king
+        if (piece.type === 'n' || piece.type === 'k') attackers.push(algebraic(i))
+
+        const offset = RAYS[index]
+        let j = i + offset
+
+        let blocked = false
+        while (j !== square) {
+          if (this._board[j] != null) {
+            blocked = true
+            break
+          }
+          j += offset
+        }
+
+        if (!blocked) attackers.push(algebraic(i))
+      }
+    }
+
+    return attackers
+  }
+
   private _isKingAttacked(color: Color) {
     const square = this._kings[color]
     return square === -1 ? false : this._attacked(swapColor(color), square)
@@ -948,6 +1004,10 @@ export class Chess {
 
   isAttacked(square: Square, attackedBy: Color) {
     return this._attacked(attackedBy, Ox88[square])
+  }
+
+  getAttackers(square: Square, attackedBy: Color) {
+    return this._attackers(attackedBy, Ox88[square])
   }
 
   isCheck() {
